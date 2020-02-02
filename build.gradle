@@ -16,4 +16,5 @@ dependencies {
     implementation files('libs/postgresql-42.2.9.jar')
     compile group: 'com.google.guava', name: 'guava', version: '19.0'
     compile 'org.json:json:20171018'
+    compile group: 'org.openjfx', name: 'javafx-base', version: '11'
 }

@@ -1,6 +1,5 @@
 package engineering;
 
-import jdk.internal.net.http.common.Pair;
 import org.json.JSONObject;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -45,6 +44,8 @@ public class TextExtractor implements FeatureExtractor {
         if (selectedDates.size() == 0) {
             return textParts;
         }
+        Map<String, Pair<Integer, Integer>> dateBounds = getPairBounds(mapIndexes, selectedDates, text.length());
+        System.out.println("dateBounds: " + dateBounds);
         return textParts;
     }
 
@@ -76,23 +77,38 @@ public class TextExtractor implements FeatureExtractor {
     private Map<String, Pair<Integer, Integer>> getPairBounds(Multimap<String, Integer> mapIndexes,
                                                               List<String> selectedDates, int texLength) {
         Map<String, Pair<Integer, Integer>> pairBounds = new HashMap<>();
+        int endBound = mapIndexes.get(selectedDates.get(0)).stream()
+                .min(Integer::compare).get();
         for (int i = 0; i < selectedDates.size() - 1; i++) {
-            List<Integer> temp = mapIndexes.get(selectedDates.get(i)).stream()
+            Pair<Integer, Integer> bounds = evalBoudns(mapIndexes.get(selectedDates.get(i)).stream()
                     .sorted()
-                    .collect(Collectors.toList());
-            if (temp.size() == 1) {
-                pairBounds.put(selectedDates.get(i), new Pair<>(temp.get(0), 1));
-            }
+                    .collect(Collectors.toList()), mapIndexes.get(selectedDates.get(i + 1)).stream()
+                    .sorted()
+                    .collect(Collectors.toList()), texLength);
+            pairBounds.put(selectedDates.get(i), bounds);
+            endBound = bounds.second;
         }
+        pairBounds.put(selectedDates.get(selectedDates.size() - 1), new Pair<>(endBound, texLength));
         return pairBounds;
     }
 
-//    private Pair<Integer, Integer> evalBoudns(List<Integer> firstDateIndexes, List<Integer> secondDateIndexes,
-//                                              int textLenght){
-//        if(secondDateIndexes == null){
-//
-//        }
-//    }
+    private Pair<Integer, Integer> evalBoudns(List<Integer> firstDateIndexes, List<Integer> secondDateIndexes,
+                                              int textLenght){
+        if(secondDateIndexes == null){
+            return new Pair<>(firstDateIndexes.get(0), textLenght);
+        }
+        if(firstDateIndexes.size() == 1){
+            return new Pair<>(firstDateIndexes.get(0), secondDateIndexes.get(0));
+        }
+        if(secondDateIndexes.get(0) - firstDateIndexes.get(0) < 24){
+            if(secondDateIndexes.size() == 1){
+                return new Pair<>(firstDateIndexes.get(0), secondDateIndexes.get(0));
+            } else {
+                return new Pair<>(firstDateIndexes.get(1), secondDateIndexes.get(1));
+            }
+        }
+        return new Pair<>(firstDateIndexes.get(0), secondDateIndexes.get(0));
+    }
 
     private Multimap<String, Integer> getDatesIndexes(String text, Set<MyDate> dates, MyDate currentDate) {
         Multimap<String, Integer> mapIndexes = ArrayListMultimap.create();

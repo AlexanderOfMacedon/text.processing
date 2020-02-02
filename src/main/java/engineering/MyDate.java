@@ -30,7 +30,7 @@ public class MyDate implements Comparable<MyDate> {
         try {
             return new MyDate(format.parse(dateFormat));
         } catch (ParseException e) {
-            System.out.println("Error: " + e);
+            System.out.println(e);
             return null;
         }
     }
