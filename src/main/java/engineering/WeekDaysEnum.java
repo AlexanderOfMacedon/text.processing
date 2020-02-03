@@ -73,14 +73,14 @@ public enum WeekDaysEnum {
         }
     }
 
-    public String getNearlyDate(MyDate currentDate) {
+    public MyDate getNearlyDate(MyDate currentDate) {
         int weekDay = currentDate.getWeekDay();
         if (weekDay == this.getDayNum()) {
-            return currentDate.toString();
+            return currentDate;
         }
         if (weekDay < this.getDayNum()) {
-            return currentDate.minusDays(7 - (this.getDayNum() - weekDay)).toString();
+            return currentDate.minusDays(7 - (this.getDayNum() - weekDay));
         }
-        return currentDate.minusDays(weekDay - this.getDayNum()).toString();
+        return currentDate.minusDays(weekDay - this.getDayNum());
     }
 }

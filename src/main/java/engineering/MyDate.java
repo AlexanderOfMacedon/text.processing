@@ -11,11 +11,10 @@ import java.util.*;
 
 public class MyDate implements Comparable<MyDate> {
     private final Date date;
-
+    private int priority;
     private static Map<Integer, String> mapWeekDays = new HashMap<>();
 
-    MyDate(Date date) {
-        this.date = date;
+    static {
         mapWeekDays.put(1, "понедельник");
         mapWeekDays.put(2, "вторник");
         mapWeekDays.put(3, "сред");
@@ -23,6 +22,28 @@ public class MyDate implements Comparable<MyDate> {
         mapWeekDays.put(5, "пятниц");
         mapWeekDays.put(6, "суббот");
         mapWeekDays.put(7, "воскресен");
+    }
+
+    MyDate(Date date) {
+        this.priority = 0;
+        this.date = date;
+    }
+
+    MyDate(Date date, int priority){
+        this.priority = priority;
+        this.date = date;
+    }
+
+    Date getDate() {
+        return date;
+    }
+
+    int getPriority(){
+        return priority;
+    }
+
+    void setPriority(int priority){
+        this.priority = priority;
     }
 
     public static MyDate parseDate(String dateFormat) {
@@ -33,10 +54,6 @@ public class MyDate implements Comparable<MyDate> {
             System.out.println(e);
             return null;
         }
-    }
-
-    Date getDate() {
-        return date;
     }
 
     int getWeekDay() {
@@ -56,7 +73,7 @@ public class MyDate implements Comparable<MyDate> {
         return localDate.getYear();
     }
 
-    public int getDay() {
+    public int getMonthDay() {
         LocalDate localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         return localDate.getDayOfMonth();
     }
@@ -78,20 +95,24 @@ public class MyDate implements Comparable<MyDate> {
         return new MyDate(Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant()));
     }
 
-    MyDate getSunday() {
+    MyDate getNearlySunday() {
         int weekDay = getWeekDay();
         if (weekDay == 7) {
             return new MyDate(date);
         }
-        return minusDays(weekDay);
+        MyDate ret = minusDays(weekDay);
+        ret.setPriority(1);
+        return ret;
     }
 
-    MyDate getSaturday() {
+    MyDate getNearlySaturday() {
         int weekDay = getWeekDay();
         if (weekDay == 6) {
             return new MyDate(date);
         }
-        return minusDays(weekDay + 1);
+        MyDate ret = minusDays(weekDay + 1);
+        ret.setPriority(1);
+        return ret;
     }
 
     MyDate getYesterday() {
@@ -104,7 +125,7 @@ public class MyDate implements Comparable<MyDate> {
 
     public List<String> getNames(MyDate nearlyDate) {
         List<String> names = new ArrayList<>();
-        names.add(String.valueOf(getDay()));
+        names.add(String.valueOf(getMonthDay()));
         names.add(mapWeekDays.get(getWeekDay()));
         if (compareTo(nearlyDate.getYesterday()) == 0) {
             names.add("вчера");
@@ -120,7 +141,7 @@ public class MyDate implements Comparable<MyDate> {
 
     @Override
     public String toString() {
-        return String.format("%02d", getDay()) + "." + String.format("%02d", getMonth()) + "."
+        return String.format("%02d", getMonthDay()) + "." + String.format("%02d", getMonth()) + "."
                 + String.format("%04d", getYear());
     }
 
@@ -128,7 +149,7 @@ public class MyDate implements Comparable<MyDate> {
     public int compareTo(MyDate o) {
         return Comparator.comparing(MyDate::getYear)
                 .thenComparing(MyDate::getMonth)
-                .thenComparing(MyDate::getDay)
+                .thenComparing(MyDate::getMonthDay)
                 .compare(this, o);
     }
 }

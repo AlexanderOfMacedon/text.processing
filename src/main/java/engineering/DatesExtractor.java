@@ -9,10 +9,9 @@ import java.util.stream.Collectors;
 
 public class DatesExtractor implements FeatureExtractor {
     private static final Map<Integer, String> mapMonth = new HashMap<>();
-    private static final List<String> weekDaysStrings = Arrays.asList("понедельник", "вторник", "сред", "четверг",
-            "пятниц", "суббот", "воскресен");
+    private static final List<String> weekDaysStrings;
 
-    public DatesExtractor() {
+    static {
         mapMonth.put(1, "янв");
         mapMonth.put(2, "февр");
         mapMonth.put(3, "март");
@@ -25,6 +24,8 @@ public class DatesExtractor implements FeatureExtractor {
         mapMonth.put(10, "октябр");
         mapMonth.put(11, "ноябр");
         mapMonth.put(12, "декабр");
+        weekDaysStrings = Arrays.asList("понедельник", "вторник", "сред", "четверг",
+                "пятниц", "суббот", "воскресен");
     }
 
     @Override
@@ -41,17 +42,61 @@ public class DatesExtractor implements FeatureExtractor {
 
 
     private Set<String> getDates(String text, MyDate date) {
-        Set<String> dates = new HashSet<>();
-        dates.addAll(findByMonth(text, date));
-        dates.addAll(findByDays(text, date));
-        dates.addAll(findByDates(text, date));
+        Set<MyDate> dates = new HashSet<>();
+        dates.addAll(findDatesInFirst(text, date));
+        dates.addAll(findDatesWithBeWord(text, date));
+        return filterDates(dates);
+    }
+
+    Set<String> filterDates (Set<MyDate> dates){
+        if(dates.size() > 2){
+            return new HashSet<>();
+        }
+        if(dates.size() == 2){
+            List<MyDate> dateList = new ArrayList<>(dates);
+            if(Math.abs(dateList.get(0).getDist(dateList.get(1))) > 1){
+                if(dateList.get(0).getPriority() == dateList.get(1).getPriority()){
+                    return new HashSet<>();
+                }
+                else{
+                    return Collections.singleton(dates.stream().
+                            max((d1,d2)->Integer.compare(d1.getPriority(), d2.getPriority()))
+                            .map(MyDate::toString).get());
+
+                }
+            }
+        }
+        return dates.stream().map(MyDate::toString).collect(Collectors.toSet());
+    }
+
+    private Set<MyDate> findDatesWithBeWord(String text, MyDate currentDate){
+        Set<MyDate> dates = new HashSet<>();
+        int indexBe = text.indexOf("был");
+        if(indexBe < 0){
+            return dates;
+        }
+        String subText = text.substring(indexBe, indexBe + Math.min(text.length() - indexBe, 30));
+        dates.addAll(findByNumbers(subText, currentDate));
+        dates.addAll(findByMonth(subText, currentDate));
+        dates.addAll(findByDays(subText, currentDate));
+        dates.addAll(findByDates(subText, currentDate));
+        return dates;
+
+    }
+
+    private Set<MyDate> findDatesInFirst(String text, MyDate currentDate){
+        Set<MyDate> dates = new HashSet<>();
+        String subText = text.substring(0, Math.min(text.length() / 4, 100));
+        dates.addAll(findByMonth(subText, currentDate));
+        dates.addAll(findByDays(subText, currentDate));
+        dates.addAll(findByDates(subText, currentDate));
         return dates;
     }
 
-    private Set<String> findByMonth(String text, MyDate date) {
+    private Set<MyDate> findByMonth(String text, MyDate date) {
         int currentMonth = date.getMonth();
         int earlierMonth = currentMonth > 1 ? currentMonth - 1 : 12;
-        Set<String> dates = new HashSet<>();
+        Set<MyDate> dates = new HashSet<>();
         JSONObject jsonObject;
         int fromIndex = 0;
         do {
@@ -79,8 +124,8 @@ public class DatesExtractor implements FeatureExtractor {
         return dates;
     }
 
-    private Set<String> findDateByMonth(String text, int currentMonth, int currentYear) {
-        Set<String> dates = new HashSet<>();
+    private Set<MyDate> findDateByMonth(String text, int currentMonth, int currentYear) {
+        Set<MyDate> dates = new HashSet<>();
         String digitString = text.replaceAll("[^0-9]+", " ").trim();
         if (digitString.length() == 0) {
             return dates;
@@ -93,7 +138,8 @@ public class DatesExtractor implements FeatureExtractor {
                 if (digit < 32 && digit > 0) {
                     MyDate date = new MyDate(new GregorianCalendar(currentYear,
                             currentMonth - 1, digit).getTime());
-                    dates.add(date.toString());
+                    date.setPriority(1);
+                    dates.add(date);
                 }
             } catch (Exception e) {
                 System.out.println("Error: " + e);
@@ -102,20 +148,20 @@ public class DatesExtractor implements FeatureExtractor {
         return dates;
     }
 
-    private Set<String> findByDays(String text, MyDate currentDate) {
-        Set<String> dates = new HashSet<>();
+    private Set<MyDate> findByDays(String text, MyDate currentDate) {
+        Set<MyDate> dates = new HashSet<>();
         if (text.contains("сегодня")) {
-            dates.add(currentDate.toString());
+            dates.add(currentDate);
         }
         if (text.contains("вчера")) {
-            dates.add(currentDate.getYesterday().toString());
+            dates.add(currentDate.getYesterday());
         }
         if (text.contains("позавчера")) {
-            dates.add(currentDate.getdbYesterday().toString());
+            dates.add(currentDate.getdbYesterday());
         }
         if (text.contains("выходн")) {
-            dates.add(currentDate.getSaturday().toString());
-            dates.add(currentDate.getSunday().toString());
+            dates.add(currentDate.getNearlySaturday());
+            dates.add(currentDate.getNearlySunday());
         }
         for(String weekDay : weekDaysStrings){
             WeekDaysEnum weekDaysEnum = WeekDaysEnum.fromString(weekDay);
@@ -129,22 +175,47 @@ public class DatesExtractor implements FeatureExtractor {
         return dates;
     }
 
-    private Set<String> findByDates(String text, MyDate currentDate){
+    private Set<MyDate> findByDates(String text, MyDate currentDate){
         Matcher matcher = Pattern.compile("(0[1-9]|[12][0-9]|3[01])[\\/.](0[1-9]|1[012])").matcher(text);
-        Set<String> dates = new HashSet<>();
+        Set<MyDate> dates = new HashSet<>();
         String tempDate;
         while (matcher.find()){
             tempDate = matcher.group();
             MyDate date = MyDate.parseDate(tempDate + "." + String.valueOf(currentDate.getYear()));
             if(date.compareTo(currentDate) > 0){
                 if(date.getMonth() > 10 && currentDate.getMonth() < 3){
-                    dates.add(tempDate + "." + String.valueOf(currentDate.getYear() - 1));
+                    date = MyDate.parseDate(tempDate + "." + String.valueOf(currentDate.getYear() - 1));
+                    date.setPriority(1);
+                    dates.add(date);
                 }
             } else {
-                dates.add(date.toString());
+                date.setPriority(1);
+                dates.add(date);
             }
         }
         return dates;
     }
 
+    private Set<MyDate> findByNumbers(String text, MyDate currentDate) {
+        Matcher matcher = Pattern.compile("(0[1-9]|[12][0-9]|3[01])").matcher(text);
+        Set<MyDate> dates = new HashSet<>();
+        String tempDate;
+        while (matcher.find()) {
+            tempDate = matcher.group();
+            MyDate date = MyDate.parseDate(tempDate + "." + String.valueOf(currentDate.getMonth())
+                    + "." + String.valueOf(currentDate.getYear()));
+            if(date.compareTo(currentDate) > 0){
+                if(date.getMonth() == 1){
+                    date = MyDate.parseDate(tempDate + ".12." + String.valueOf(currentDate.getYear()));
+                } else {
+                    date = MyDate.parseDate(tempDate + "." + String.valueOf(currentDate.getMonth() - 1)
+                            + "." + String.valueOf(currentDate.getYear()));
+                }
+            }
+            System.out.println("DATAAAA: " + date);
+            date.setPriority(1);
+            dates.add(date);
+        }
+        return dates;
+    }
 }

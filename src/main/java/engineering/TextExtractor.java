@@ -20,6 +20,10 @@ public class TextExtractor implements FeatureExtractor {
                 .stream()
                 .map(s -> MyDate.parseDate((String) s))
                 .collect(Collectors.toSet());
+        // внутри 2 обработчика пока что, в случае dates.size() > 2 - облом пока
+//        fromDatesToMapIndexes();
+//        getBounds();
+//        getTextParts1();
         String text = data.getString("text");
         System.out.println(text);
         if (dates.size() > 0) {
