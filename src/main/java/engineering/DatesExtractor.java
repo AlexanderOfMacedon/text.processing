@@ -35,8 +35,10 @@ public class DatesExtractor implements FeatureExtractor {
             System.out.println("Input json don't have key: date.");
             return null;
         }
-        MyDate currentDate = MyDate.parseDate(data.getString("currentDate"));
-        jsonObject.put("dates", getDates(data.getString("text"), currentDate));
+        try {
+            MyDate currentDate = MyDate.parseDate(data.getString("currentDate"));
+            jsonObject.put("dates", getDates(data.getString("text"), currentDate));
+        } catch (Exception ignore){ }
         return jsonObject;
     }
 
@@ -60,7 +62,7 @@ public class DatesExtractor implements FeatureExtractor {
                 }
                 else{
                     return Collections.singleton(dates.stream().
-                            max((d1,d2)->Integer.compare(d1.getPriority(), d2.getPriority()))
+                            max(Comparator.comparingInt(MyDate::getPriority))
                             .map(MyDate::toString).get());
 
                 }
@@ -75,7 +77,7 @@ public class DatesExtractor implements FeatureExtractor {
         if(indexBe < 0){
             return dates;
         }
-        String subText = text.substring(indexBe, indexBe + Math.min(text.length() - indexBe, 30));
+        String subText = text.substring(indexBe, indexBe + Math.min(text.length() - indexBe, 70));
         dates.addAll(findByNumbers(subText, currentDate));
         dates.addAll(findByMonth(subText, currentDate));
         dates.addAll(findByDays(subText, currentDate));
@@ -86,10 +88,10 @@ public class DatesExtractor implements FeatureExtractor {
 
     private Set<MyDate> findDatesInFirst(String text, MyDate currentDate){
         Set<MyDate> dates = new HashSet<>();
-        String subText = text.substring(0, Math.min(text.length() / 4, 100));
-        dates.addAll(findByMonth(subText, currentDate));
-        dates.addAll(findByDays(subText, currentDate));
-        dates.addAll(findByDates(subText, currentDate));
+//        String subText = text.substring(0, Math.min(text.length() / 4, 100));
+        dates.addAll(findByMonth(text, currentDate));
+        dates.addAll(findByDays(text, currentDate));
+        dates.addAll(findByDates(text, currentDate));
         return dates;
     }
 
@@ -97,7 +99,6 @@ public class DatesExtractor implements FeatureExtractor {
         int currentMonth = date.getMonth();
         int earlierMonth = currentMonth > 1 ? currentMonth - 1 : 12;
         Set<MyDate> dates = new HashSet<>();
-        JSONObject jsonObject;
         int fromIndex = 0;
         do {
             fromIndex = text.indexOf(mapMonth.get(currentMonth), fromIndex + 1);
@@ -180,7 +181,7 @@ public class DatesExtractor implements FeatureExtractor {
         Set<MyDate> dates = new HashSet<>();
         String tempDate;
         while (matcher.find()){
-            tempDate = matcher.group();
+            tempDate = matcher.group().replaceAll("\\/", ".");
             MyDate date = MyDate.parseDate(tempDate + "." + String.valueOf(currentDate.getYear()));
             if(date.compareTo(currentDate) > 0){
                 if(date.getMonth() > 10 && currentDate.getMonth() < 3){
@@ -203,16 +204,15 @@ public class DatesExtractor implements FeatureExtractor {
         while (matcher.find()) {
             tempDate = matcher.group();
             MyDate date = MyDate.parseDate(tempDate + "." + String.valueOf(currentDate.getMonth())
-                    + "." + String.valueOf(currentDate.getYear()));
+                    + "." + currentDate.getYear());
             if(date.compareTo(currentDate) > 0){
                 if(date.getMonth() == 1){
                     date = MyDate.parseDate(tempDate + ".12." + String.valueOf(currentDate.getYear()));
                 } else {
                     date = MyDate.parseDate(tempDate + "." + String.valueOf(currentDate.getMonth() - 1)
-                            + "." + String.valueOf(currentDate.getYear()));
+                            + "." + currentDate.getYear());
                 }
             }
-            System.out.println("DATAAAA: " + date);
             date.setPriority(1);
             dates.add(date);
         }

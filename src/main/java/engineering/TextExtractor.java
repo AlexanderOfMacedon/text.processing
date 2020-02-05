@@ -14,24 +14,20 @@ public class TextExtractor implements FeatureExtractor {
         JSONObject texts = new JSONObject();
         if (!data.has("currentDate") || !data.has("dates") || !data.has("text")) {
             System.out.println("Input json don't have key: date or currentDate or text.");
+            return texts;
         }
         MyDate currentDate = MyDate.parseDate(data.getString("currentDate"));
         Set<MyDate> dates = data.getJSONArray("dates").toList()
                 .stream()
                 .map(s -> MyDate.parseDate((String) s))
                 .collect(Collectors.toSet());
-        // внутри 2 обработчика пока что, в случае dates.size() > 2 - облом пока
-//        fromDatesToMapIndexes();
-//        getBounds();
-//        getTextParts1();
         String text = data.getString("text");
-        System.out.println(text);
         if (dates.size() > 0) {
             Multimap<String, Integer> mapIndexes = getDatesIndexes(text, dates, currentDate);
-            System.out.println("mapIndexes: " + mapIndexes);
-            getTextParts(text, mapIndexes, currentDate);
+            Map<String, String> textParts = getTextParts(text, mapIndexes, currentDate);
+            texts.put("texts", textParts);
         }
-        return null;
+        return texts;
     }
 
     private Map<String, String> getTextParts(String text, Multimap<String, Integer> mapIndexes, MyDate currentDate) {
@@ -49,7 +45,13 @@ public class TextExtractor implements FeatureExtractor {
             return textParts;
         }
         Map<String, Pair<Integer, Integer>> dateBounds = getPairBounds(mapIndexes, selectedDates, text.length());
-        System.out.println("dateBounds: " + dateBounds);
+        for(String date: dateBounds.keySet()){
+            try {
+                textParts.put(date, text.substring(dateBounds.get(date).first, dateBounds.get(date).second));
+            } catch (Exception e){
+                return textParts;
+            }
+        }
         return textParts;
     }
 
@@ -92,6 +94,11 @@ public class TextExtractor implements FeatureExtractor {
             pairBounds.put(selectedDates.get(i), bounds);
             endBound = bounds.second;
         }
+        if(texLength - endBound < 24 ){
+            List<Integer> tempList = mapIndexes.get(selectedDates.get(selectedDates.size() - 1))
+                    .stream().sorted().collect(Collectors.toList());
+            endBound = tempList.get(tempList.size() - 1);
+        }
         pairBounds.put(selectedDates.get(selectedDates.size() - 1), new Pair<>(endBound, texLength));
         return pairBounds;
     }
@@ -102,7 +109,11 @@ public class TextExtractor implements FeatureExtractor {
             return new Pair<>(firstDateIndexes.get(0), textLenght);
         }
         if(firstDateIndexes.size() == 1){
-            return new Pair<>(firstDateIndexes.get(0), secondDateIndexes.get(0));
+            if(secondDateIndexes.get(0) - firstDateIndexes.get(0) > 24) {
+                return new Pair<>(firstDateIndexes.get(0), secondDateIndexes.get(0));
+            } else {
+                return new Pair<>(firstDateIndexes.get(0), textLenght);
+            }
         }
         if(secondDateIndexes.get(0) - firstDateIndexes.get(0) < 24){
             if(secondDateIndexes.size() == 1){
