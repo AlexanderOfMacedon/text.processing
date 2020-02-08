@@ -37,7 +37,10 @@ public class DatesExtractor implements FeatureExtractor {
         }
         try {
             MyDate currentDate = MyDate.parseDate(data.getString("currentDate"));
-            jsonObject.put("dates", getDates(data.getString("text"), currentDate));
+            Set<String> dates = getDates(data.getString("text"), currentDate);
+            if(dates.size() > 0){
+                jsonObject.put("dates", dates);
+            }
         } catch (Exception ignore){ }
         return jsonObject;
     }

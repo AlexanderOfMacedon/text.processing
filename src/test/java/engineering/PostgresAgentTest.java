@@ -15,7 +15,7 @@ import static org.junit.Assert.*;
 
 public class PostgresAgentTest {
     private final Properties properties = new Properties();
-    private final String DBUrl = "jdbc:postgresql://localhost:5432/test_java";
+    private final String DBUrl = "jdbc:postgresql://localhost:5432/fishtexts";
 
     public PostgresAgentTest() {
         properties.setProperty("user","postgres");
@@ -28,8 +28,8 @@ public class PostgresAgentTest {
     @Test
     public void select() throws Exception {
         try (PostgresAgent postgresqlAgent = new PostgresAgent(DBUrl, properties)) {
-            ResultSet data = postgresqlAgent.select("table1", new JSONObject());
-            ArrayList<JSONObject> jsonData = DBUtils.resultSet2Json(data, postgresqlAgent.columns("table1"));
+            ResultSet data = postgresqlAgent.select("parsed_texts", new JSONObject());
+            ArrayList<JSONObject> jsonData = DBUtils.resultSet2Json(data, postgresqlAgent.columns("parsed_texts"));
             System.out.println(jsonData);
         } catch (SQLException sqlException) {
             System.out.println(sqlException.getMessage());
@@ -76,7 +76,7 @@ public class PostgresAgentTest {
     @Test
     public void deleteTable() {
         try (PostgresAgent postgresqlAgent = new PostgresAgent(DBUrl, properties)) {
-            postgresqlAgent.deleteTable("table1");
+            postgresqlAgent.deleteTable("parsed_texts");
 
         } catch (Exception sqlException) {
             System.out.println(sqlException.getMessage());

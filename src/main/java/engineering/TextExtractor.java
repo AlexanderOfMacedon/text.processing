@@ -25,7 +25,9 @@ public class TextExtractor implements FeatureExtractor {
         if (dates.size() > 0) {
             Multimap<String, Integer> mapIndexes = getDatesIndexes(text, dates, currentDate);
             Map<String, String> textParts = getTextParts(text, mapIndexes, currentDate);
-            texts.put("texts", textParts);
+            if(textParts.size() > 0){
+                texts.put("texts", textParts);
+            }
         }
         return texts;
     }
