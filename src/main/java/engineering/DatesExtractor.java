@@ -85,6 +85,9 @@ public class DatesExtractor implements FeatureExtractor {
         dates.addAll(findByMonth(subText, currentDate));
         dates.addAll(findByDays(subText, currentDate));
         dates.addAll(findByDates(subText, currentDate));
+        for(MyDate date : dates){
+            date.setPriority(1);
+        }
         return dates;
 
     }

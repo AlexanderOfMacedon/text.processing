@@ -3,7 +3,6 @@ package engineering;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
-import org.json.JSONString;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -25,8 +24,8 @@ public class TextSeparator {
     }
 
     public static void main(String[] args) throws Exception {
-        TextSeparator marker = new TextSeparator();
-        marker.start();
+        TextSeparator separator = new TextSeparator();
+        separator.start();
     }
 
     public void start() {
