@@ -50,28 +50,51 @@ public class FishExtractor implements FeatureExtractor {
     }
 
     private Map<String, String> collectFishsText(String text, Multimap<String, Integer> fishsIndexes) {
+        if(fishsIndexes.keySet().size() == 0) {
+            return new HashMap<>();
+        }
         Multimap<String, String> fishsTexts = ArrayListMultimap.create();
         Map<Integer, String> indexesNames = getIndexesNames(fishsIndexes);
-        int startIndex = evaluateStartIndex(text, indexesNames.keySet()), punctuationListIndex = 0;
+        int startIndex = 0, punctuationListIndex = 0, index = 0;
         String currentFish = indexesNames.get(indexesNames.keySet().stream().min(Integer::compare).get());
         List<Integer> punctuationIndexes = getPunctuationIndexes(text);
         List<Integer> indexes = new ArrayList<>(indexesNames.keySet());
         for(int i=1;i<indexes.size();i++){
-            String fish = indexesNames.get(indexes.get(i));
+            index = indexes.get(i);
+            String fish = indexesNames.get(index);
             if (!fish.equals(currentFish)) {
-                int index = i;
-                punctuationListIndex = punctuationIndexes.subList(punctuationListIndex, punctuationIndexes.size())
-                        .stream()
-                        .filter(s->s < indexes.get(index))
-                        .max(Integer::compare)
-                        .get();
-                int endIndex = punctuationListIndex < indexes.get(i - 1) ? index : punctuationListIndex;
-                fishsTexts.put(currentFish, text.substring(startIndex, endIndex));
-                startIndex = endIndex + 1;
-                currentFish = fish;
+                punctuationListIndex = evaluateDelimIndex(punctuationIndexes, indexes.get(i - 1), index);
+                if(punctuationListIndex > indexes.get(i - 1)){
+                    fishsTexts.put(currentFish, text.substring(startIndex, punctuationListIndex));
+                    startIndex = punctuationListIndex + 1;
+                    currentFish = fish;
+                }
             }
         }
+        fishsTexts.put(currentFish, text.substring(startIndex, text.length() - 1));
         return sumMultimapTexts(fishsTexts);
+    }
+
+
+
+    private int evaluateDelimIndex(List<Integer> puncIndexes, int leftIndex, int rightIndex){
+        int boardIndex = evaluateBoardIndex(puncIndexes, rightIndex);
+        if(boardIndex == 0){
+            return puncIndexes.get(boardIndex);
+        }
+        while (rightIndex - puncIndexes.get(boardIndex) < 16 && puncIndexes.get(boardIndex - 1) > leftIndex){
+            boardIndex--;
+        }
+        return puncIndexes.get(boardIndex);
+    }
+
+    private int evaluateBoardIndex(List<Integer> indexes, int board){
+        for(int i=1;i<indexes.size();i++){
+            if(indexes.get(i) > board){
+                return i-1;
+            }
+        }
+        return indexes.size() - 1;
     }
 
     private List<Integer> getPunctuationIndexes(String text) {
@@ -81,16 +104,6 @@ public class FishExtractor implements FeatureExtractor {
             punctuationIndexes.add(m.start());
         }
         return new ArrayList<>(punctuationIndexes);
-    }
-
-    private int evaluateStartIndex(String text, Set<Integer> indexesFishs) {
-        int minIndexFishs = indexesFishs.stream().min(Integer::compare).get();
-        Matcher m = Pattern.compile("[.,:?!;]").matcher(text);
-        if (m.find()) {
-            return Math.min(m.start(), minIndexFishs);
-        } else {
-            return minIndexFishs;
-        }
     }
 
     private Map<String, String> sumMultimapTexts(Multimap<String, String> fishsTexts) {
