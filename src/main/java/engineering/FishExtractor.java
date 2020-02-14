@@ -16,6 +16,15 @@ public class FishExtractor implements FeatureExtractor {
     static {
         fishNamesVersion.putAll("щука", Arrays.asList("щук", "шнур", "щуч"));
         fishNamesVersion.putAll("окунь", Arrays.asList("окун", "окуш", "полосат", "горбач", "горбат"));
+        fishNamesVersion.putAll("лещ", Arrays.asList("лещ"));
+        fishNamesVersion.putAll("судак", Arrays.asList("судак", "клыкаст"));
+        fishNamesVersion.putAll("берш", Arrays.asList("берш"));
+        fishNamesVersion.putAll("сом", Arrays.asList("сом", "усат"));
+        fishNamesVersion.putAll("карп", Arrays.asList("карп"));
+        fishNamesVersion.putAll("карась", Arrays.asList("карас"));
+        fishNamesVersion.putAll("плотва", Arrays.asList("плотв"));
+        fishNamesVersion.putAll("толстолобик", Arrays.asList("толстолоб", "лобаст"));
+        fishNamesVersion.putAll("жерех", Arrays.asList("жерех"));
     }
 
     @Override
@@ -65,13 +74,13 @@ public class FishExtractor implements FeatureExtractor {
             if (!fish.equals(currentFish)) {
                 punctuationListIndex = evaluateDelimIndex(punctuationIndexes, indexes.get(i - 1), index);
                 if(punctuationListIndex > indexes.get(i - 1)){
-                    fishsTexts.put(currentFish, text.substring(startIndex, punctuationListIndex));
+                    fishsTexts.put(currentFish, " " + text.substring(startIndex, punctuationListIndex));
                     startIndex = punctuationListIndex + 1;
                     currentFish = fish;
                 }
             }
         }
-        fishsTexts.put(currentFish, text.substring(startIndex, text.length() - 1));
+        fishsTexts.put(currentFish, " " + text.substring(startIndex, text.length() - 1));
         return sumMultimapTexts(fishsTexts);
     }
 
