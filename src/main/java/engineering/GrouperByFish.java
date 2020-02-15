@@ -1,11 +1,17 @@
 package engineering;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class GrouperByFish {
     private final Properties properties = new Properties();
@@ -28,14 +34,8 @@ public class GrouperByFish {
         try (PostgresAgent postgresqlAgent = new PostgresAgent(DBUrl, properties)) {
             ResultSet data = postgresqlAgent.select("parsed_texts", new JSONObject());
             FeatureExtractor fishExtractor = new FishExtractor();
-            int count = 0;
-            while (data.next() && count < 100) {
-                fishExtractor.extract(getRow(data));
-                count++;
-                if(count % 10000 == 0){
-                    System.out.println("Handled: " + count);
-                }
-            }
+            Multimap<String, JSONObject> rows = collectRows(data, fishExtractor);
+            insertRows(postgresqlAgent, rows);
         } catch (Exception sqlException) {
             System.out.println(sqlException.getMessage());
         }
@@ -50,6 +50,58 @@ public class GrouperByFish {
         row.put("is_dialog", data.getBoolean("is_dialog"));
         row.put("marked", new String(data.getBytes("marked"), "cp1251"));
         row.put("iscomment", new String(data.getBytes("iscomment"), "cp1251"));
+        return row;
+    }
+
+    private JSONObject cleanRow(JSONObject row, Set<String> columns) throws UnsupportedEncodingException {
+        JSONObject cleanRow = new JSONObject();
+        for(String column: columns){
+            if(row.has(column)){
+                cleanRow.put(column, new String(row.get(column).toString().getBytes(), "UTF-8"));
+            }
+        }
+        return cleanRow;
+    }
+
+    private void insertRows(PostgresAgent postgresAgent, Multimap<String, JSONObject> rows)
+            throws UnsupportedEncodingException, SQLException {
+        JSONObject columns = new JSONObject() {{
+            put("main_place", "TEXT");
+            put("mini_place", "TEXT");
+            put("text", "TEXT");
+            put("date", "varchar(16)");
+            put("marked", "varchar(3)");
+        }};
+        for(String fish: rows.keySet()){
+            String tableName = new String(fish.toString().getBytes(), "UTF-8");
+            try {
+                postgresAgent.createTable(tableName, columns);
+            } catch (Exception ignore){}
+            for(JSONObject row: rows.get(fish)){
+                postgresAgent.insert(tableName, cleanRow(row, columns.keySet()));
+            }
+        }
+    }
+
+    private Multimap<String, JSONObject> collectRows(ResultSet data, FeatureExtractor fishExtractor)
+            throws SQLException, UnsupportedEncodingException {
+        Multimap<String, JSONObject> fishCollects = ArrayListMultimap.create();
+        JSONObject row, features;
+        while(data.next()){
+            row = getRow(data);
+            features = fishExtractor.extract(row);
+            if(features.length() > 0){
+                for(String fish : features.keySet()){
+                    fishCollects.put(fish, collectFishRow(row, features.getString(fish)));
+                }
+            }
+        }
+        return fishCollects;
+    }
+
+    private JSONObject collectFishRow(JSONObject mainRow, String text){
+        JSONObject row = new JSONObject(mainRow, JSONObject.getNames(mainRow));
+        row.put("text", text);
         return row;
     }
 }

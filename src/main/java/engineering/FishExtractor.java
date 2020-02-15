@@ -19,7 +19,7 @@ public class FishExtractor implements FeatureExtractor {
         fishNamesVersion.putAll("лещ", Arrays.asList("лещ"));
         fishNamesVersion.putAll("судак", Arrays.asList("судак", "клыкаст"));
         fishNamesVersion.putAll("берш", Arrays.asList("берш"));
-        fishNamesVersion.putAll("сом", Arrays.asList("сом", "усат"));
+        fishNamesVersion.putAll("сом", Arrays.asList("сомы", "сома", "сомов", "сомик", "сом"));
         fishNamesVersion.putAll("карп", Arrays.asList("карп"));
         fishNamesVersion.putAll("карась", Arrays.asList("карас"));
         fishNamesVersion.putAll("плотва", Arrays.asList("плотв"));
@@ -34,9 +34,10 @@ public class FishExtractor implements FeatureExtractor {
             return null;
         }
         String text = data.getString("text");
-        System.out.println("text: " + text);
-        System.out.println("fishs texts: " + collectFishsText(text, getFishsIndexes(text)));
-        return null;
+//        System.out.println("text: " + text);
+        Map<String, String> fishTexts = collectFishsText(text, getFishsIndexes(text));
+//        System.out.println("fishs texts: " + fishTexts);
+        return new JSONObject(fishTexts);
     }
 
     private Multimap<String, Integer> getFishsIndexes(String text) {
@@ -50,7 +51,12 @@ public class FishExtractor implements FeatureExtractor {
     private List<Integer> getFishIndexes(String text, String fish) {
         List<Integer> indexes = new ArrayList<>();
         for (String fishName : fishNamesVersion.get(fish)) {
-            Matcher m = Pattern.compile("(?=(" + fishName + "))").matcher(text);
+            Matcher m;
+            if (!fishName.equals("сом")) {
+                m = Pattern.compile("[,.!: ;?]" + fishName).matcher(text);
+            } else {
+                m = Pattern.compile("[,.!: ;?]сом[,.!: ;?]").matcher(text);
+            }
             while (m.find()) {
                 indexes.add(m.start());
             }
@@ -59,7 +65,7 @@ public class FishExtractor implements FeatureExtractor {
     }
 
     private Map<String, String> collectFishsText(String text, Multimap<String, Integer> fishsIndexes) {
-        if(fishsIndexes.keySet().size() == 0) {
+        if (fishsIndexes.keySet().size() == 0) {
             return new HashMap<>();
         }
         Multimap<String, String> fishsTexts = ArrayListMultimap.create();
@@ -68,16 +74,23 @@ public class FishExtractor implements FeatureExtractor {
         String currentFish = indexesNames.get(indexesNames.keySet().stream().min(Integer::compare).get());
         List<Integer> punctuationIndexes = getPunctuationIndexes(text);
         List<Integer> indexes = new ArrayList<>(indexesNames.keySet());
-        for(int i=1;i<indexes.size();i++){
+        if (punctuationIndexes.size() == 0) {
+            fishsTexts.put(currentFish, " " + text.substring(startIndex, text.length() - 1));
+            return sumMultimapTexts(fishsTexts);
+        }
+        for (int i = 1; i < indexes.size(); i++) {
             index = indexes.get(i);
             String fish = indexesNames.get(index);
             if (!fish.equals(currentFish)) {
                 punctuationListIndex = evaluateDelimIndex(punctuationIndexes, indexes.get(i - 1), index);
-                if(punctuationListIndex > indexes.get(i - 1)){
+                if (punctuationListIndex > indexes.get(i - 1) && punctuationListIndex < index) {
                     fishsTexts.put(currentFish, " " + text.substring(startIndex, punctuationListIndex));
                     startIndex = punctuationListIndex + 1;
                     currentFish = fish;
                 }
+            }
+            if (startIndex >= text.length()) {
+                startIndex = indexes.get(i - 1) + 3;
             }
         }
         fishsTexts.put(currentFish, " " + text.substring(startIndex, text.length() - 1));
@@ -85,22 +98,22 @@ public class FishExtractor implements FeatureExtractor {
     }
 
 
-
-    private int evaluateDelimIndex(List<Integer> puncIndexes, int leftIndex, int rightIndex){
+    private int evaluateDelimIndex(List<Integer> puncIndexes, int leftIndex, int rightIndex) {
         int boardIndex = evaluateBoardIndex(puncIndexes, rightIndex);
-        if(boardIndex == 0){
+        if (boardIndex == 0) {
             return puncIndexes.get(boardIndex);
         }
-        while (rightIndex - puncIndexes.get(boardIndex) < 16 && puncIndexes.get(boardIndex - 1) > leftIndex){
+        while (rightIndex - puncIndexes.get(boardIndex) < 10 && puncIndexes.get(boardIndex) > leftIndex
+                && boardIndex > 0) {
             boardIndex--;
         }
         return puncIndexes.get(boardIndex);
     }
 
-    private int evaluateBoardIndex(List<Integer> indexes, int board){
-        for(int i=1;i<indexes.size();i++){
-            if(indexes.get(i) > board){
-                return i-1;
+    private int evaluateBoardIndex(List<Integer> indexes, int board) {
+        for (int i = 1; i < indexes.size(); i++) {
+            if (indexes.get(i) > board) {
+                return i - 1;
             }
         }
         return indexes.size() - 1;

@@ -45,26 +45,6 @@ public class TextSeparator {
                     System.out.println("Handled: " + count);
                 }
             }
-
-
-//            ResultSet data = postgresqlAgent.select("texts", new JSONObject());
-//            int count = 0;
-//            FeatureExtractor datesExtractor = new DatesExtractor();
-//            FeatureExtractor textExtractor = new TextExtractor();
-//            JSONObject temp;
-//            while (data.next() && count < 2000) {
-//                JSONObject jsonObject = new JSONObject();
-//                jsonObject.put("text", new String(data.getBytes("text"), "cp1251"));
-//                jsonObject.put("currentDate", new String(data.getBytes("date"), "cp1251"));
-//                temp = datesExtractor.extract(jsonObject);
-//                if (temp.has("dates")) {
-//                    jsonObject.put("dates", temp.get("dates"));
-//                }
-//                System.out.println(jsonObject);
-//                temp = textExtractor.extract(jsonObject);
-//                System.out.println(temp);
-//                count++;
-//            }
         } catch (Exception sqlException) {
             System.out.println(sqlException.getMessage());
         }
