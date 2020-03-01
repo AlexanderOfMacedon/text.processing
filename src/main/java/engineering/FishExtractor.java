@@ -87,6 +87,9 @@ public class FishExtractor implements FeatureExtractor {
     private List<Integer> getPredatorsIndexes(String text) {
         List<Integer> indexes = new ArrayList<>();
         indexes.addAll(getIndexesByName(text, "хищник", "[,.!: ;?]", ""));
+        indexes.addAll(getIndexesByName(text, "жерлиц", "[,.!: ;?]", ""));
+        indexes.addAll(getIndexesByName(text, "живц", "[,.!: ;?]", ""));
+        indexes.addAll(getIndexesByName(text, "живец", "[,.!: ;?]", ""));
         for(String fish: predatorsFish){
             if(fish.equals("сом")){
                 for(String fishName: fishNamesVersion.get(fish)){
