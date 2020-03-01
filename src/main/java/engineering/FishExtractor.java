@@ -12,19 +12,42 @@ import java.util.regex.Pattern;
 public class FishExtractor implements FeatureExtractor {
 
     private static Multimap<String, String> fishNamesVersion = ArrayListMultimap.create();
+    private static List<String> predatorsFish = new ArrayList<>(
+            List.of("щука",
+                    "окунь",
+                    "судак",
+                    "сом",
+                    "жерех"));
+    private static List<String> peaceFish = new ArrayList<>(
+            List.of("лещ",
+                    "карп",
+                    "карась",
+                    "плотва",
+                    "толстолобик",
+                    "язь",
+                    "голавль",
+                    "густера",
+                    "линь",
+                    "красноперка"));
 
     static {
         fishNamesVersion.putAll("щука", Arrays.asList("щук", "шнур", "щуч"));
         fishNamesVersion.putAll("окунь", Arrays.asList("окун", "окуш", "полосат", "горбач", "горбат"));
         fishNamesVersion.putAll("лещ", Arrays.asList("лещ"));
-        fishNamesVersion.putAll("судак", Arrays.asList("судак", "клыкаст"));
-        fishNamesVersion.putAll("берш", Arrays.asList("берш"));
+        fishNamesVersion.putAll("судак", Arrays.asList("судак", "клыкаст", "берш"));
         fishNamesVersion.putAll("сом", Arrays.asList("сомы", "сома", "сомов", "сомик", "сом"));
-        fishNamesVersion.putAll("карп", Arrays.asList("карп"));
+        fishNamesVersion.putAll("карп", Arrays.asList("карп", "сазан", "зеркальн"));
         fishNamesVersion.putAll("карась", Arrays.asList("карас"));
         fishNamesVersion.putAll("плотва", Arrays.asList("плотв"));
         fishNamesVersion.putAll("толстолобик", Arrays.asList("толстолоб", "лобаст"));
-        fishNamesVersion.putAll("жерех", Arrays.asList("жерех"));
+        fishNamesVersion.putAll("жерех", Arrays.asList("жерех", "жереш"));
+        fishNamesVersion.putAll("язь", Arrays.asList("язь", "язи", "язя", "язей"));
+        fishNamesVersion.putAll("голавль", Arrays.asList("голавл"));
+        fishNamesVersion.putAll("густера", Arrays.asList("густер"));
+        fishNamesVersion.putAll("линь", Arrays.asList("линь", "линя", "линей"));
+        fishNamesVersion.putAll("красноперка", Arrays.asList("красноперк"));
+        fishNamesVersion.putAll("налим", Arrays.asList("налим"));
+        fishNamesVersion.putAll("форель", Arrays.asList("форел"));
     }
 
     @Override
@@ -36,6 +59,10 @@ public class FishExtractor implements FeatureExtractor {
         String text = data.getString("text");
 //        System.out.println("text: " + text);
         Map<String, String> fishTexts = collectFishsText(text, getFishsIndexes(text));
+        Multimap<String, Integer> multimap= ArrayListMultimap.create();
+        multimap.putAll("хищник", getPredatorsIndexes(text));
+        multimap.putAll("мирная", getPeaceFishIndexes(text));
+        fishTexts.putAll(collectFishsText(text, multimap));
 //        System.out.println("fishs texts: " + fishTexts);
         return new JSONObject(fishTexts);
     }
@@ -48,18 +75,47 @@ public class FishExtractor implements FeatureExtractor {
         return fishIndexes;
     }
 
+    private List<Integer> getIndexesByName(String text, String name, String prefix, String suffix) {
+        Matcher matcher = Pattern.compile(prefix + name + suffix).matcher(text);
+        List<Integer> indexes = new ArrayList<>();
+        while (matcher.find()) {
+            indexes.add(matcher.start());
+        }
+        return indexes;
+    }
+
+    private List<Integer> getPredatorsIndexes(String text) {
+        List<Integer> indexes = new ArrayList<>();
+        indexes.addAll(getIndexesByName(text, "хищник", "[,.!: ;?]", ""));
+        for(String fish: predatorsFish){
+            if(fish.equals("сом")){
+                for(String fishName: fishNamesVersion.get(fish)){
+                    indexes.addAll(getIndexesByName(text, fishName, "[,.!: ;?]", "[,.!: ;?]"));
+                }
+            } else {
+                for(String fishName: fishNamesVersion.get(fish)){
+                    indexes.addAll(getIndexesByName(text, fishName, "[,.!: ;?]", ""));
+                }
+            }
+
+        }
+        return indexes;
+    }
+
+    private List<Integer> getPeaceFishIndexes(String text){
+        List<Integer> indexes = new ArrayList<>();
+        for(String fish: peaceFish){
+            for(String fishName: fishNamesVersion.get(fish)){
+                indexes.addAll(getIndexesByName(text, fishName, "[,.!: ;?]", ""));
+            }
+        }
+        return indexes;
+    }
+
     private List<Integer> getFishIndexes(String text, String fish) {
         List<Integer> indexes = new ArrayList<>();
         for (String fishName : fishNamesVersion.get(fish)) {
-            Matcher m;
-            if (!fishName.equals("сом")) {
-                m = Pattern.compile("[,.!: ;?]" + fishName).matcher(text);
-            } else {
-                m = Pattern.compile("[,.!: ;?]сом[,.!: ;?]").matcher(text);
-            }
-            while (m.find()) {
-                indexes.add(m.start());
-            }
+            indexes.addAll(getIndexesByName(text, fishName, "[,.!: ;?]", ""));
         }
         return indexes;
     }

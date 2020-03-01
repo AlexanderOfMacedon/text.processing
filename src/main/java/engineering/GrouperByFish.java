@@ -7,11 +7,8 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class GrouperByFish {
     private final Properties properties = new Properties();
@@ -32,10 +29,10 @@ public class GrouperByFish {
 
     public void start() {
         try (PostgresAgent postgresqlAgent = new PostgresAgent(DBUrl, properties)) {
-            ResultSet data = postgresqlAgent.select("parsed_texts", new JSONObject());
+            ResultSet data = postgresqlAgent.select("comments", new JSONObject());
             FeatureExtractor fishExtractor = new FishExtractor();
             Multimap<String, JSONObject> rows = collectRows(data, fishExtractor);
-            insertRows(postgresqlAgent, rows);
+//            insertRows(postgresqlAgent, rows);
         } catch (Exception sqlException) {
             System.out.println(sqlException.getMessage());
         }
@@ -43,13 +40,11 @@ public class GrouperByFish {
 
     private JSONObject getRow(ResultSet data) throws SQLException, UnsupportedEncodingException {
         JSONObject row = new JSONObject();
-        row.put("text", new String(data.getBytes("text"), "cp1251"));
-        row.put("date", new String(data.getBytes("date"), "cp1251"));
-        row.put("main_place", new String(data.getBytes("main_place"), "cp1251"));
-        row.put("mini_place", new String(data.getBytes("mini_place"), "cp1251"));
-        row.put("is_dialog", data.getBoolean("is_dialog"));
-        row.put("marked", new String(data.getBytes("marked"), "cp1251"));
-        row.put("iscomment", new String(data.getBytes("iscomment"), "cp1251"));
+        row.put("text", new String(data.getBytes("text"), "utf-8"));
+        row.put("date", new String(data.getBytes("date"), "utf-8"));
+        row.put("main_place", new String(data.getBytes("main_place"), "utf-8"));
+        row.put("mini_place", new String(data.getBytes("mini_place"), "utf-8"));
+        row.put("marked", new String(data.getBytes("marked"), "utf-8"));
         return row;
     }
 

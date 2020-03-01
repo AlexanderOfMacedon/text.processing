@@ -15,11 +15,15 @@ public class Lemmatizer {
         Lemmatizer lemmatizer = new Lemmatizer();
         String str = "вчера снова копринская акватория изначально вообще то собирались на сить  и даже уже перемахнули плотину в угличе  но актуальная информация вечером накануне перед выездом поселила червячка сомнения 7 и 8 половили  а 9 уже некоторые и поклёвки не видели  и рыба в камере отсутствует  прекрасно  короче  по пути меняем планы и уходим на мышкин  а там на переправу и дальше в сторону коприно";
         System.out.println("до: " + str);
+        long startTime = System.currentTimeMillis();
         System.out.println("после: " + lemmatizer.lemmatize(str));
+        long endTime = System.currentTimeMillis();
+        System.out.println("time: " + (endTime - startTime) / 1000.0);
     }
 
     private String lemmatize(String text) throws IOException {
         List<String> tokens = tokenize(text);
+        System.out.println(tokens.size());
         for(int i=0;i<tokens.size();i++){
             tokens.set(i, lemmatizeToken(new String(tokens.get(i).getBytes(), "utf-8")));
         }
