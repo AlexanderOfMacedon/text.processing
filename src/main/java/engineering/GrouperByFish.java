@@ -32,7 +32,7 @@ public class GrouperByFish {
             ResultSet data = postgresqlAgent.select("comments", new JSONObject());
             FeatureExtractor fishExtractor = new FishExtractor();
             Multimap<String, JSONObject> rows = collectRows(data, fishExtractor);
-//            insertRows(postgresqlAgent, rows);
+            insertRows(postgresqlAgent, rows);
         } catch (Exception sqlException) {
             System.out.println(sqlException.getMessage());
         }
