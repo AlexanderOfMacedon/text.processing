@@ -12,24 +12,26 @@ import java.util.Set;
 
 public class GrouperByFish {
     private final Properties properties = new Properties();
-    private final String DBUrl = "jdbc:postgresql://localhost:5432/fishtexts";
+    private final String DBUrl;
+    private final String sourceTableName;
 
-    public GrouperByFish() {
+    public GrouperByFish(String databaseName, String sourceTableName) {
+        DBUrl = "jdbc:postgresql://localhost:5432/" + databaseName;
         properties.setProperty("user", "postgres");
         properties.setProperty("password", "081099");
         properties.setProperty("useUnicode", "true");
         properties.setProperty("encoding", "WIN1251");
-
+        this.sourceTableName = sourceTableName;
     }
 
     public static void main(String[] args) throws Exception {
-        GrouperByFish grouper = new GrouperByFish();
+        GrouperByFish grouper = new GrouperByFish("fishtexts", "comments");
         grouper.start();
     }
 
     public void start() {
         try (PostgresAgent postgresqlAgent = new PostgresAgent(DBUrl, properties)) {
-            ResultSet data = postgresqlAgent.select("comments", new JSONObject());
+            ResultSet data = postgresqlAgent.select(sourceTableName, new JSONObject());
             FeatureExtractor fishExtractor = new FishExtractor();
             Multimap<String, JSONObject> rows = collectRows(data, fishExtractor);
             insertRows(postgresqlAgent, rows);

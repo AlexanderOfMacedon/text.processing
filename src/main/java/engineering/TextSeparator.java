@@ -13,35 +13,41 @@ import java.util.*;
 
 public class TextSeparator {
     private final Properties properties = new Properties();
-    private final String DBUrl = "jdbc:postgresql://localhost:5432/fishtexts";
+    private final String DBUrl;
+    private final String sourceTableName;
+    private final String distTableName;
 
-    public TextSeparator() {
+    public TextSeparator(String databaseName, String sourceTableName, String distTableName) {
+        DBUrl = "jdbc:postgresql://localhost:5432/" + databaseName;
         properties.setProperty("user", "postgres");
         properties.setProperty("password", "081099");
         properties.setProperty("useUnicode", "true");
         properties.setProperty("encoding", "WIN1251");
-
+        this.sourceTableName = sourceTableName;
+        this.distTableName = distTableName;
     }
 
+
     public static void main(String[] args) throws Exception {
-        TextSeparator separator = new TextSeparator();
+        TextSeparator separator = new TextSeparator("fishtexts", "texts",
+                "parsed_texts");
         separator.start();
     }
 
     public void start() {
         try (PostgresAgent postgresqlAgent = new PostgresAgent(DBUrl, properties)) {
-            ResultSet data = postgresqlAgent.select("texts", new JSONObject());
+            ResultSet data = postgresqlAgent.select(sourceTableName, new JSONObject());
             int count = 0;
             while (data.next()) {
 //                System.out.println(getRow(data));
                 JSONObject separatedRow = getSeparatedRow(getRow(data));
-                if(separatedRow != null){
-                    for(JSONObject row : getHandledRows (separatedRow)){
+                if (separatedRow != null) {
+                    for (JSONObject row : getHandledRows(separatedRow)) {
                         insertJson(postgresqlAgent, row);
                     }
                 }
                 count++;
-                if(count % 10000 == 0){
+                if (count % 10000 == 0) {
                     System.out.println("Handled: " + count);
                 }
             }
@@ -62,15 +68,15 @@ public class TextSeparator {
         return row;
     }
 
-    private JSONObject getSeparatedRow(JSONObject row){
+    private JSONObject getSeparatedRow(JSONObject row) {
         FeatureExtractor datesExtractor = new DatesExtractor();
         FeatureExtractor textExtractor = new TextExtractor();
         JSONObject sepatatedRow = row;
         JSONObject temp = datesExtractor.extract(sepatatedRow);
-        if(temp.has("dates")){
+        if (temp.has("dates")) {
             sepatatedRow.put("dates", temp.get("dates"));
             temp = textExtractor.extract(sepatatedRow);
-            if(temp.has("texts")){
+            if (temp.has("texts")) {
                 sepatatedRow.put("texts", temp.get("texts"));
                 return sepatatedRow;
             }
@@ -80,7 +86,7 @@ public class TextSeparator {
 
     private Set<JSONObject> getHandledRows(JSONObject separatedRow) throws IOException, JsonMappingException {
         Set<JSONObject> rows = new HashSet<>();
-        JSONObject baseJson = new JSONObject(){{
+        JSONObject baseJson = new JSONObject() {{
             put("main_place", separatedRow.get("main_place"));
             put("mini_place", separatedRow.get("mini_place"));
             put("marked", separatedRow.get("marked"));
@@ -89,10 +95,10 @@ public class TextSeparator {
         }};
         JSONObject temp;
         ObjectMapper mapper = new ObjectMapper();
-        if(separatedRow.has("texts")){
-            HashMap<String,Object> texts =
+        if (separatedRow.has("texts")) {
+            HashMap<String, Object> texts =
                     mapper.readValue(separatedRow.get("texts").toString(), HashMap.class);
-            for(String date : texts.keySet()){
+            for (String date : texts.keySet()) {
                 temp = new JSONObject(baseJson, JSONObject.getNames(baseJson));
                 temp.put("date", date);
                 temp.put("text", texts.get(date));
@@ -114,13 +120,14 @@ public class TextSeparator {
             put("marked", "varchar(3)");
         }};
         try {
-            postgresAgent.createTable("parsed_texts", columns);
-        } catch (Exception ignore){}
+            postgresAgent.createTable(distTableName, columns);
+        } catch (Exception ignore) {
+        }
         JSONObject cleanRow = new JSONObject();
-        for(String key: row.keySet()){
+        for (String key : row.keySet()) {
             cleanRow.put(key, new String(row.get(key).toString().getBytes(), "UTF-8"));
         }
-        postgresAgent.insert("parsed_texts", cleanRow);
+        postgresAgent.insert(distTableName, cleanRow);
     }
 
 

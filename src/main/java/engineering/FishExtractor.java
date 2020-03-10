@@ -100,7 +100,6 @@ public class FishExtractor implements FeatureExtractor {
                     indexes.addAll(getIndexesByName(text, fishName, "[,.!: ;?]", ""));
                 }
             }
-
         }
         return indexes;
     }
